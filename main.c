@@ -217,7 +217,7 @@ static __attribute__((noreturn)) void lcore_main(void)
 				printf("\tVLAN tagged frame, offset:%u\n", offset);
 			}
 #ifndef IPv4_BYTES
-#define IPv4_BYTES_FMT "%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8
+#define IPv4_BYTES_FMT "::ffff:%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8
 #define IPv4_BYTES(addr) \
 		(uint8_t) (((addr) >> 24) & 0xFF),\
 		(uint8_t) (((addr) >> 16) & 0xFF),\
@@ -252,9 +252,9 @@ static __attribute__((noreturn)) void lcore_main(void)
 				printf("\t\tIp_proto=0x%02x\n",  ipv4_hdr->next_proto_id);
 				printf("\t\tIp_chksum=0x%02x\n", ipv4_hdr->hdr_checksum);
 				printf("\t\tIp_src="IPv4_BYTES_FMT"\n", IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->src_addr)));
-				snprintf(pa.ip_src_addr, 16, IPv4_BYTES_FMT, IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->src_addr)));
-			  //rte_memcpy(pa.ip_src_addr,&ipv4_hdr->src_addr, 4);
+				snprintf(pa.ip_src_addr, 23, IPv4_BYTES_FMT, IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->src_addr))); // 15 + 7("::ffff:") + 1
 				printf("\t\tIp_dst="IPv4_BYTES_FMT"\n", IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->dst_addr)));
+				snprintf(pa.ip_dst_addr, 23, IPv4_BYTES_FMT, IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->dst_addr)));
 				// for now: only submit data if it is an IPv4 packet 
 				CHappend(&pa);
 			}

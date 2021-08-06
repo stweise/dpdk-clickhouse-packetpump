@@ -17,7 +17,8 @@ private:
 	Client *client;
 	std::shared_ptr<ColumnUInt64> pkt_length;
 	std::shared_ptr<ColumnUInt64> ip_total_length;
-	std::shared_ptr<ColumnIPv4> ip_src_addr;
+	std::shared_ptr<ColumnIPv6> ip_src_addr;
+	std::shared_ptr<ColumnIPv6> ip_dst_addr;
 };
 
 CH::CH()
@@ -27,10 +28,11 @@ CH::CH()
 	client = new Client(ClientOptions().SetHost("localhost"));
 
 	/// Create a table.
-	client->Execute("CREATE TABLE IF NOT EXISTS test.packets (pkt_length UInt64, ip_total_length UInt64, ip_src_addr IPv4 ) ENGINE = Memory");
+	client->Execute("CREATE TABLE IF NOT EXISTS test.packets (pkt_length UInt64, ip_total_length UInt64, ip_src_addr IPv6, ip_dst_addr IPv6) ENGINE = Memory");
 	pkt_length = std::make_shared<ColumnUInt64>();
 	ip_total_length = std::make_shared<ColumnUInt64>();
-	ip_src_addr = std::make_shared<ColumnIPv4>();
+	ip_src_addr = std::make_shared<ColumnIPv6>();
+	ip_dst_addr = std::make_shared<ColumnIPv6>();
 }
 
 CH::~CH()
@@ -48,6 +50,7 @@ void CH::append(struct packet *p)
 	pkt_length->Append(p->pkt_length);
 	ip_total_length->Append(p->ip_total_length);
 	ip_src_addr->Append((const std::string&)(p->ip_src_addr));
+	ip_dst_addr->Append((const std::string&)(p->ip_dst_addr));
 }
 void CH::insert()
 {
@@ -62,6 +65,7 @@ void CH::insert()
 	block.AppendColumn("pkt_length", pkt_length);
 	block.AppendColumn("ip_total_length", ip_total_length);
 	block.AppendColumn("ip_src_addr", ip_src_addr);
+	block.AppendColumn("ip_dst_addr", ip_dst_addr);
 	//std::cout << "Number of rows in block: " << block.GetRowCount() << std::endl;
 	//block.AppendColumn("name", name);
 
@@ -71,6 +75,7 @@ void CH::insert()
 	pkt_length->Clear();
 	ip_total_length->Clear();
 	ip_src_addr->Clear();
+	ip_dst_addr->Clear();
 }
 
 void CH::show()

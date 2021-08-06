@@ -1,0 +1,3 @@
+select * from test.packets where ip_total_length=66
+select * from test.packets where ip_src_addr = toIPv6('192.168.4.33')
+drop table test.packets
