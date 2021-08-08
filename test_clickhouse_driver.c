@@ -1,5 +1,6 @@
 #include "use_clickhouse_driver.h"
 #include <stdio.h>
+#include <string.h>
 
 #define MEASURE_TIME
 #ifdef MEASURE_TIME
@@ -30,6 +31,9 @@ void insertFakeData()
 		for(i = 0; i < 12000000; i++)
 		{
 			p.pkt_length = rand();
+			p.ip_total_length = 64;
+			strcpy(p.ip_src_addr, "::ffff:192.168.4.5");
+			strcpy(p.ip_dst_addr, "::ffff:192.168.4.6");
 			CHappend(&p);
 		}
 		CHinsert();

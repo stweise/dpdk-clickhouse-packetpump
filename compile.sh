@@ -1,5 +1,0 @@
-g++ -c -I/usr/local/include clickhouse_driver.cpp -std=c++20 -Wall -O2
-gcc -c test_clickhouse_driver.c -O2 -march=native -Wall -Wextra
-g++ -L/usr/local/lib -lclickhouse-cpp-lib clickhouse_driver.o test_clickhouse_driver.o -std=c++20 -Wall -Wextra -o test_clickhouse_driver.x
-gcc -c main.c -fno-omit-frame-pointer -O2 -I/usr/local/include -include rte_config.h -march=native -Wall -Wextra
-gcc -L/usr/local/lib -L/usr/local/lib64 -lrte_bpf -lrte_flow_classify -lrte_pipeline -lrte_table -lrte_port -lrte_fib -lrte_ipsec -lrte_vhost -lrte_stack -lrte_security -lrte_sched -lrte_reorder -lrte_rib -lrte_rcu -lrte_rawdev -lrte_pdump -lrte_power -lrte_member -lrte_lpm -lrte_latencystats -lrte_kni -lrte_jobstats -lrte_ip_frag -lrte_gso -lrte_gro -lrte_eventdev -lrte_efd -lrte_distributor -lrte_cryptodev -lrte_compressdev -lrte_cfgfile -lrte_bitratestats -lrte_bbdev -lrte_acl -lrte_timer -lrte_hash -lrte_metrics -lrte_cmdline -lrte_pci -lrte_ethdev -lrte_meter -lrte_net -lrte_mbuf -lrte_mempool -lrte_ring -lrte_eal -lrte_kvargs -lclickhouse-cpp-lib -lstdc++ clickhouse_driver.o main.o -std=c++20 -Wall -o main.x
