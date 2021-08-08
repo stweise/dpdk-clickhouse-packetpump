@@ -17,20 +17,20 @@ TODO: put some claims about performance in a table
 ### Dependencies
 
 * A network switch - model used: HPE OfficeConnect 1820 Series Switch J9979A
-** but you can use any network switch that supports port mirroring (or full switch mirroring if you want)
+	* but you can use any network switch that supports port mirroring (or full switch mirroring if you want)
 * An Intel NUC - model used: BXNUC10i3FNH2
-** but you can use any notebook or PC with a network card supported by DPDK [DPDK supported network cards](https://core.dpdk.org/supported/)
+	* but you can use any notebook or PC with a network card supported by DPDK [DPDK supported network cards](https://core.dpdk.org/supported/)
 * Ubuntu Linux 20.04
 * DPDK 19.11
 * Clickhouse (including driver) 
-** TODO: clickhouse version
-** TODO: clickhouse-cpp driver repo
-** TODO: mention multithreading limitation of driver and link github issue
+	* clickhouse-server version 21.7.4.18-2
+	* https://github.com/ClickHouse/clickhouse-cpp (version used: 1.5.0)
+	* there are some limitations to the current clickhouse-cpp driver, especially: https://github.com/ClickHouse/clickhouse-cpp/issues/37 , please vote for them to fix this ( I already did)
 
 ### Installing
 
 * Install Ubuntu Linux 20.04 on Intel NUC
-** TODO: find simple guide how to do this
+	* TODO: find simple guide how to do this
 * TODO: Install ansible
 * TODO: clone this repo on the machine
 * TODO: run ansible and reboot
