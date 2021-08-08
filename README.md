@@ -16,8 +16,9 @@ TODO: put some claims about performance in a table
 
 ### Dependencies
 
-* A network switch - TODO: model
-* An Intel NUC - TODO: mention model that I used
+* A network switch - model used: HPE OfficeConnect 1820 Series Switch J9979A
+** but you can use any network switch that supports port mirroring (or full switch mirroring if you want)
+* An Intel NUC - model used: BXNUC10i3FNH2
 ** but you can use any notebook or PC with a network card supported by DPDK [DPDK supported network cards](https://core.dpdk.org/supported/)
 * Ubuntu Linux 20.04
 * DPDK 19.11
@@ -34,12 +35,21 @@ TODO: put some claims about performance in a table
 * TODO: clone this repo on the machine
 * TODO: run ansible and reboot
 * TODO: configure network switch, screenshots + model I used
+* TODO: setup clickhouse
+* TODO: setup grafana
+* use CMake to build the application
+```
+# mkdir build
+# cd build
+# cmake ..
+# make
+```
 
 ### Executing program
 
 * TODO: How to run the program
 ```
-# ./run.sh
+# ./run_pcap_test.sh
 ```
 * TODO: How to query clickhouse + maybe Grafana?
 
