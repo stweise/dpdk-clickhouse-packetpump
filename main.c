@@ -12,7 +12,6 @@
 #include "use_clickhouse_driver.h"
 #include "helpers.h"
 
-#define DEBUG
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
@@ -158,8 +157,13 @@ static __attribute__((noreturn)) void lcore_main(void)
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n",
 	       rte_lcore_id());
 
+	// Setup Clickhouse connection
 	CHconstruct();
+
 	/* Run until the application is quit or killed. */
+#ifdef PROGRESS_INDICATOR
+	char progress = '-';
+#endif
 	for(;;)
 	{
 		/* Get burst of RX packets, from first port of pair. */
@@ -182,6 +186,17 @@ static __attribute__((noreturn)) void lcore_main(void)
 		struct rte_ipv4_hdr *ipv4_hdr;
 		for(p = 0; p < nb_rx; p++)
 		{
+
+#ifdef PROGRESS_INDICATOR
+			printf("%c",progress);
+			/*
+			printf("Cha: %c ",progress);
+			printf("Hex: %x ",progress);
+			printf("Bin: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(progress));
+			*/
+			progress ^= 0x51;
+#endif
+
 #ifdef DEBUG
 			printf("--------------------------------------\n");
 			printf("\tEther\n");
@@ -190,7 +205,8 @@ static __attribute__((noreturn)) void lcore_main(void)
 #ifdef DEBUG
 			printf("\tPacket length: %u\n", pkt_length);
 #endif
-			//Clickhouse
+			
+			// Fill packet struct, used to transfer data to Clickhouse
 			struct packet pa;
 			pa.pkt_length = pkt_length;
 			struct rte_ether_hdr *eth_hdr;
@@ -215,10 +231,13 @@ static __attribute__((noreturn)) void lcore_main(void)
 				printf("\tVLAN tagged frame, offset:%u\n", offset);
 			}
 #endif
+#ifdef DEBUG
 			printf("\t----------------------------------\n");
+#endif
 			if(ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 			{
 				ipv4_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1) + offset);
+#ifdef DEBUG
 				printf("\t\tIpv4\n");
 				printf("\t\tIp_version=0x%02x\n", (ipv4_hdr->version_ihl & 0xf0) >> 4);
 				printf("\t\tIp_ihl=0x%02x\n", ipv4_hdr->version_ihl & 0x0f);
@@ -233,18 +252,25 @@ static __attribute__((noreturn)) void lcore_main(void)
 				printf("\t\tIp_proto=0x%02x\n",  ipv4_hdr->next_proto_id);
 				printf("\t\tIp_chksum=0x%02x\n", ipv4_hdr->hdr_checksum);
 				printf("\t\tIp_src="IPv4_BYTES_FMT"\n", IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->src_addr)));
+#endif
 				snprintf(pa.ip_src_addr, 23, IPv4_BYTES_FMT, IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->src_addr))); // 15 + 7("::ffff:") + 1
+#ifdef DEBUG
 				printf("\t\tIp_dst="IPv4_BYTES_FMT"\n", IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->dst_addr)));
+#endif
 				snprintf(pa.ip_dst_addr, 23, IPv4_BYTES_FMT, IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->dst_addr)));
 				// for now: only submit data if it is an IPv4 packet 
 				CHappend(&pa);
 			}
 			else
 			{
+#ifdef DEBUG
 				printf("\t\tNOTIPv4\n");
+#endif
 			}
+#ifdef DEBUG
 			printf("\t----------------------------------\n");
 			printf("--------------------------------------\n");
+#endif
 		}
 		CHinsert();
 
