@@ -1,4 +1,6 @@
 a.out
 *.[ox]
 build
+*.pcapng
+*.pcap
 

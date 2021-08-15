@@ -10,6 +10,7 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 #include "use_clickhouse_driver.h"
+#include "helpers.h"
 
 #define DEBUG
 #define RX_RING_SIZE 1024
@@ -27,10 +28,6 @@ static const struct rte_eth_conf port_conf_default =
 		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 	},
 };
-
-int pcap_port_pair[2]; // these are the ports we will be performing work for later
-
-/* basicfwd.c: Basic DPDK skeleton forwarding example. */
 
 /*
  * Initializes a given port using global settings and with the RX buffers
@@ -121,7 +118,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 
-	printf("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
+	printf("Port %u set up for use with DPDK MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
 	       " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n",
 	       port,
 	       addr.addr_bytes[0], addr.addr_bytes[1],
@@ -144,30 +141,22 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
  */
 static __attribute__((noreturn)) void lcore_main(void)
 {
-	uint16_t port;
+	//Receive packets on the port
+	uint16_t port = 0;
 
 	/*
 	 * Check that the port is on the same NUMA node as the polling thread
 	 * for best performance.
 	 */
-	int inc;
-	for(inc = 0; inc < 2; inc++)
-	{
-		port = pcap_port_pair[inc];
 		if(rte_eth_dev_socket_id(port) > 0 &&
 		        rte_eth_dev_socket_id(port) !=
 		        (int)rte_socket_id())
 			printf("WARNING, port %u is on remote NUMA node to "
 			       "polling thread.\n\tPerformance will "
 			       "not be optimal.\n", port);
-	}
 
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n",
 	       rte_lcore_id());
-
-	//Receive packets on first port and forward to second port of our pcap pair
-	int rport = pcap_port_pair[0];
-	//int tport = pcap_port_pair[1];
 
 	CHconstruct();
 	/* Run until the application is quit or killed. */
@@ -175,7 +164,7 @@ static __attribute__((noreturn)) void lcore_main(void)
 	{
 		/* Get burst of RX packets, from first port of pair. */
 		struct rte_mbuf *pkts_burst[BURST_SIZE];
-		uint16_t nb_rx = rte_eth_rx_burst(rport, 0,
+		uint16_t nb_rx = rte_eth_rx_burst(port, 0,
 		                                  pkts_burst, BURST_SIZE);
 
 		//break loop if there are no packets in the buffer
@@ -184,22 +173,29 @@ static __attribute__((noreturn)) void lcore_main(void)
 			continue;
 		}
 
+#ifdef DEBUG
 		printf("------------------\n");
 		printf("Packets rcv: %u\n", nb_rx);
+#endif
 		uint16_t p;
 		uint16_t offset, ether_type;
 		struct rte_ipv4_hdr *ipv4_hdr;
 		for(p = 0; p < nb_rx; p++)
 		{
+#ifdef DEBUG
 			printf("--------------------------------------\n");
 			printf("\tEther\n");
+#endif
 			uint32_t pkt_length = rte_pktmbuf_pkt_len(pkts_burst[p]);// - sizeof(struct rte_ether_hdr);
+#ifdef DEBUG
 			printf("\tPacket length: %u\n", pkt_length);
+#endif
 			//Clickhouse
 			struct packet pa;
 			pa.pkt_length = pkt_length;
 			struct rte_ether_hdr *eth_hdr;
 			eth_hdr = rte_pktmbuf_mtod(pkts_burst[p], struct rte_ether_hdr *);
+#ifdef DEBUG
 			printf("\tSRC-MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8
 			       ":%02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 "\n",
 			       eth_hdr->s_addr.addr_bytes[0], eth_hdr->s_addr.addr_bytes[1],
@@ -210,29 +206,14 @@ static __attribute__((noreturn)) void lcore_main(void)
 			       eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
 			       eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
 			       eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5]);
+#endif
 			ether_type = eth_hdr->ether_type;
 			offset = get_vlan_offset(eth_hdr, &ether_type);
+#ifdef DEBUG
 			if(offset > 0)
 			{
 				printf("\tVLAN tagged frame, offset:%u\n", offset);
 			}
-#ifndef IPv4_BYTES
-#define IPv4_BYTES_FMT "::ffff:%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8
-#define IPv4_BYTES(addr) \
-		(uint8_t) (((addr) >> 24) & 0xFF),\
-		(uint8_t) (((addr) >> 16) & 0xFF),\
-		(uint8_t) (((addr) >> 8) & 0xFF),\
-		(uint8_t) ((addr) & 0xFF)
-#endif
-
-#ifndef IPv6_BYTES
-#define IPv6_BYTES_FMT "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"\
-                       "%02x%02x:%02x%02x:%02x%02x:%02x%02x"
-#define IPv6_BYTES(addr) \
-    addr[0],  addr[1], addr[2],  addr[3], \
-    addr[4],  addr[5], addr[6],  addr[7], \
-    addr[8],  addr[9], addr[10], addr[11],\
-    addr[12], addr[13],addr[14], addr[15]
 #endif
 			printf("\t----------------------------------\n");
 			if(ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
@@ -334,7 +315,6 @@ main(int argc, char *argv[])
 	port_init(0, mbuf_pool);
 	printf("INIT: Successfully initialized PCAP port %" PRIu16 "\n", 0);
 	//fill array of pcap port pair, with valid portid
-	pcap_port_pair[0] = 0;
 	lcore_main();
 	return 0;
 }
