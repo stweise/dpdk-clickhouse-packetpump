@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.19)
 project (dpdk-clickhouse-packetdump)
 
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+
 # We will use pkg-config to find dpdk
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(DPDK REQUIRED libdpdk)

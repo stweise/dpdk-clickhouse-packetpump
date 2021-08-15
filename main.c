@@ -14,7 +14,6 @@
 #include "use_clickhouse_driver.h"
 
 #define RX_RING_SIZE 1024
-#define TX_RING_SIZE 1024
 
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
@@ -36,13 +35,11 @@ static const struct rte_eth_conf port_conf_default = {
  */
 static inline int port_init(uint16_t port, struct rte_mempool *mbuf_pool) {
   struct rte_eth_conf port_conf = port_conf_default;
-  const uint16_t rx_rings = 1, tx_rings = 1;
+  const uint16_t rx_rings = 1;
   uint16_t nb_rxd = RX_RING_SIZE;
-  uint16_t nb_txd = TX_RING_SIZE;
   int retval;
   uint16_t q;
   struct rte_eth_dev_info dev_info;
-  struct rte_eth_txconf txconf;
 
   if (!rte_eth_dev_is_valid_port(port)) {
     return -1;
@@ -55,20 +52,17 @@ static inline int port_init(uint16_t port, struct rte_mempool *mbuf_pool) {
     return retval;
   }
 
-#ifdef DEBUG
+#ifndef NDEBUG
   printf("Port: %u Driver name %s\n", port, dev_info.driver_name);
 #endif
 
-  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-    port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
-
   /* Configure the Ethernet device. */
-  retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
+  retval = rte_eth_dev_configure(port, rx_rings, 0, &port_conf);
   if (retval != 0) {
     return retval;
   }
 
-  retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
+  retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, NULL);
   if (retval != 0) {
     return retval;
   }
@@ -77,17 +71,6 @@ static inline int port_init(uint16_t port, struct rte_mempool *mbuf_pool) {
   for (q = 0; q < rx_rings; q++) {
     retval = rte_eth_rx_queue_setup(
         port, q, nb_rxd, rte_eth_dev_socket_id(port), NULL, mbuf_pool);
-    if (retval < 0) {
-      return retval;
-    }
-  }
-
-  txconf = dev_info.default_txconf;
-  txconf.offloads = port_conf.txmode.offloads;
-  /* Allocate and set up 1 TX queue per Ethernet port. */
-  for (q = 0; q < tx_rings; q++) {
-    retval = rte_eth_tx_queue_setup(port, q, nb_txd,
-                                    rte_eth_dev_socket_id(port), &txconf);
     if (retval < 0) {
       return retval;
     }
@@ -159,7 +142,7 @@ static __attribute__((noreturn)) void lcore_main(void) {
       continue;
     }
 
-#ifdef DEBUG
+#ifndef NDEBUG
     printf("------------------\n");
     printf("Packets rcv: %u\n", nb_rx);
 #endif
@@ -177,13 +160,13 @@ static __attribute__((noreturn)) void lcore_main(void) {
       progress ^= 0x51;
 #endif
 
-#ifdef DEBUG
+#ifndef NDEBUG
       printf("--------------------------------------\n");
       printf("\tEther\n");
 #endif
       uint32_t pkt_length = rte_pktmbuf_pkt_len(
           pkts_burst[p]);  // - sizeof(struct rte_ether_hdr);
-#ifdef DEBUG
+#ifndef NDEBUG
       printf("\tPacket length: %u\n", pkt_length);
 #endif
 
@@ -192,7 +175,7 @@ static __attribute__((noreturn)) void lcore_main(void) {
       pa.pkt_length = pkt_length;
       struct rte_ether_hdr *eth_hdr;
       eth_hdr = rte_pktmbuf_mtod(pkts_burst[p], struct rte_ether_hdr *);
-#ifdef DEBUG
+#ifndef NDEBUG
       printf("\tSRC-MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 ":%02" PRIx8
              ":%02" PRIx8 ":%02" PRIx8 "\n",
              eth_hdr->s_addr.addr_bytes[0], eth_hdr->s_addr.addr_bytes[1],
@@ -206,17 +189,17 @@ static __attribute__((noreturn)) void lcore_main(void) {
 #endif
       ether_type = eth_hdr->ether_type;
       offset = get_vlan_offset(eth_hdr, &ether_type);
-#ifdef DEBUG
+#ifndef NDEBUG
       if (offset > 0) {
         printf("\tVLAN tagged frame, offset:%u\n", offset);
       }
 #endif
-#ifdef DEBUG
+#ifndef NDEBUG
       printf("\t----------------------------------\n");
 #endif
       if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
         ipv4_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1) + offset);
-#ifdef DEBUG
+#ifndef NDEBUG
         printf("\t\tIpv4\n");
         printf("\t\tIp_version=0x%02x\n", (ipv4_hdr->version_ihl & 0xf0) >> 4);
         printf("\t\tIp_ihl=0x%02x\n", ipv4_hdr->version_ihl & 0x0f);
@@ -239,27 +222,27 @@ static __attribute__((noreturn)) void lcore_main(void) {
         snprintf(pa.ip_src_addr, 23, IPv4_BYTES_FMT,
                  IPv4_BYTES(rte_cpu_to_be_32(
                      ipv4_hdr->src_addr)));  // 15 + 7("::ffff:") + 1
-#ifdef DEBUG
+#ifndef NDEBUG
         printf("\t\tIp_dst=" IPv4_BYTES_FMT "\n",
                IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->dst_addr)));
 #endif
         snprintf(pa.ip_dst_addr, 23, IPv4_BYTES_FMT,
                  IPv4_BYTES(rte_cpu_to_be_32(ipv4_hdr->dst_addr)));
-        // for now: only submit data if it is an IPv4 packet
+        /* for now: only submit data if it is an IPv4 packet */
         CHappend(&pa);
       } else {
-#ifdef DEBUG
+#ifndef NDEBUG
         printf("\t\tNOTIPv4\n");
 #endif
       }
-#ifdef DEBUG
+#ifndef NDEBUG
       printf("\t----------------------------------\n");
       printf("--------------------------------------\n");
 #endif
     }
     CHinsert();
 
-    /* Free any unsent packets. */
+    /* Free all packets received in burst */
     uint16_t buf;
     for (buf = 0; buf < nb_rx; buf++) {
       rte_pktmbuf_free(pkts_burst[buf]);
