@@ -30,9 +30,15 @@ CH::CH() {
 
   /// Create a table.
   client->Execute(
-      "CREATE TABLE IF NOT EXISTS test.packets (pkt_length UInt64, "
-      "ip_total_length UInt64, ip_src_addr IPv6, ip_dst_addr IPv6) ENGINE = "
-      "Memory");
+      "CREATE TABLE IF NOT EXISTS test.packets "
+      "("
+      "timestamp DateTime DEFAULT now(),"
+      "pkt_length UInt64, "
+      "ip_total_length UInt64, "
+      "ip_src_addr IPv6, "
+      "ip_dst_addr IPv6 "
+      ")"
+      "ENGINE = Memory");
   pkt_length = std::make_shared<ColumnUInt64>();
   ip_total_length = std::make_shared<ColumnUInt64>();
   ip_src_addr = std::make_shared<ColumnIPv6>();
@@ -63,6 +69,7 @@ void CH::insert() {
   name->Append("seven");
   */
 
+  /* not filling the timestamp row for now, letting the database do it */
   block.AppendColumn("pkt_length", pkt_length);
   block.AppendColumn("ip_total_length", ip_total_length);
   block.AppendColumn("ip_src_addr", ip_src_addr);
